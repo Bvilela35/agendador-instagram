@@ -182,8 +182,16 @@ def _estado_atual() -> dict:
         return dict(_estado_remoto)
 
 
+def _legendas_plataformas() -> dict:
+    """Legendas de TikTok e YouTube por arquivo de vídeo (legendas-plataformas.json)."""
+    with contextlib.suppress(ValueError, OSError):
+        return json.loads((ROOT / "legendas-plataformas.json").read_text(encoding="utf-8"))
+    return {}
+
+
 def dados_do_painel() -> dict:
     posts, erros = scheduler.load_posts()
+    outras = _legendas_plataformas()
     estado = _estado_atual()
     agora = datetime.now(scheduler.TZ)
     itens = []
@@ -210,6 +218,7 @@ def dados_do_painel() -> dict:
                 if miniatura and (ROOT / "miniaturas" / miniatura).is_file() else ""
             ),
             "legenda": post.caption,
+            "outras": outras.get(arquivo),
             "status": status,
             "link": entrada.get("permalink"),
             "erro": entrada.get("ultimo_erro"),

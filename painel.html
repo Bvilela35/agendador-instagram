@@ -98,6 +98,23 @@
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; cursor: pointer;
   }
   .legenda.aberta { display: block; }
+  .plataformas { margin-top: 10px; border-top: 1px solid var(--borda); padding-top: 8px; }
+  .abas { display: flex; gap: 6px; flex-wrap: wrap; }
+  .abas button {
+    font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--borda); background: transparent; color: var(--suave);
+  }
+  .abas button[aria-selected="true"] { background: var(--lilas-fundo); border-color: transparent; color: var(--lilas); }
+  .campo { margin-top: 8px; background: var(--fundo); border-radius: 10px; padding: 9px 11px; }
+  .campo-topo { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .campo-topo .rotulo { font-size: 11px; }
+  .copiar {
+    margin-left: auto; font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; padding: 5px 12px;
+    border-radius: 999px; border: 0; background: var(--texto); color: var(--fundo); min-width: 74px;
+  }
+  .copiar.ok { background: var(--verde); color: #fff; }
+  .campo p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; font-size: 14px; }
+  .abas button:focus-visible, .copiar:focus-visible { outline: 2px solid var(--lilas); outline-offset: 2px; }
   .metricas { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 13px; color: var(--suave); }
   .metricas b { color: var(--texto); font-weight: 650; font-variant-numeric: tabular-nums; margin-right: 3px; }
   .totais { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; margin-top: 14px; }
@@ -223,6 +240,7 @@ function desenhar() {
     const leg = el("p", "legenda", p.legenda || "(sem legenda)"); leg.title = "Clique para ver a legenda inteira";
     leg.onclick = () => leg.classList.toggle("aberta");
     corpo.append(leg, el("div", "arquivo", p.arquivos.join(" · ")));
+    corpo.append(plataformas(p));
     if (p.status === "publicado" && p.metricas) corpo.append(linhaMetricas(p.metricas));
     if (p.erro) corpo.append(el("div", "falha", `Falhou${p.tentativas ? ` (tentativa ${p.tentativas})` : ""}: ${p.erro}`));
     else if (p.status === "ignorado" || p.status === "passou") corpo.append(el("div", "falha", "Passou do horário sem ser publicado. Mude a data na planilha para publicar."));
@@ -231,6 +249,47 @@ function desenhar() {
   const ult = dados.ultima_checagem ? partes(dados.ultima_checagem).hora : "—";
   document.getElementById("rodape").textContent = `Horários em ${dados.fuso.replace("_", " ")} · última checagem às ${ult} · atualiza sozinho a cada minuto`;
   relogio();
+}
+
+const abaAberta = {}; // aba escolhida por vídeo, mantida entre as atualizações automáticas
+
+async function copiarTexto(texto, botao) {
+  try { await navigator.clipboard.writeText(texto); }
+  catch {
+    const t = el("textarea"); t.value = texto; t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.append(t); t.select(); document.execCommand("copy"); t.remove();
+  }
+  botao.textContent = "Copiado"; botao.classList.add("ok");
+  setTimeout(() => { botao.textContent = "Copiar"; botao.classList.remove("ok"); }, 1600);
+}
+
+function campo(rotulo, texto) {
+  const c = el("div", "campo"), topo = el("div", "campo-topo"), b = el("button", "copiar", "Copiar");
+  b.type = "button"; b.setAttribute("aria-label", "Copiar " + rotulo.toLowerCase());
+  b.onclick = () => copiarTexto(texto, b);
+  topo.append(el("span", "rotulo", rotulo), b); c.append(topo, el("p", null, texto));
+  return c;
+}
+
+function plataformas(p) {
+  const chave = p.arquivos[0] || p.quando, box = el("div", "plataformas"), abas = el("div", "abas"), area = el("div");
+  abas.setAttribute("role", "tablist");
+  const opcoes = [["instagram", "Instagram"]];
+  if (p.outras) opcoes.push(["tiktok", "TikTok"], ["youtube", "YouTube"]);
+  const mostrar = qual => {
+    abaAberta[chave] = qual; area.textContent = "";
+    for (const b of abas.children) b.setAttribute("aria-selected", b.dataset.aba === qual);
+    if (qual === "instagram") area.append(campo("Legenda do Instagram", p.legenda || ""));
+    if (qual === "tiktok") area.append(campo("Legenda do TikTok", p.outras.tiktok));
+    if (qual === "youtube") area.append(campo("Título do Shorts", p.outras.youtube_titulo), campo("Descrição do Shorts", p.outras.youtube_descricao));
+  };
+  for (const [id, nome] of opcoes) {
+    const b = el("button", null, nome); b.type = "button"; b.dataset.aba = id; b.setAttribute("role", "tab");
+    b.onclick = () => mostrar(abaAberta[chave] === id ? null : id); abas.append(b);
+  }
+  box.append(abas, area);
+  if (abaAberta[chave]) mostrar(abaAberta[chave]);
+  return box;
 }
 
 const CAMPOS = [["views", "visualizações"], ["reach", "alcance"], ["likes", "curtidas"], ["comments", "comentários"], ["shares", "compartilhamentos"], ["saved", "salvamentos"]];
