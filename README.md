@@ -39,12 +39,21 @@ No app: **Configurações → Tipo de conta e ferramentas → Mudar para conta p
 
 1. Acesse [developers.facebook.com/apps](https://developers.facebook.com/apps) e clique em **Criar app**.
 2. Em caso de uso, escolha **Gerenciar mensagens e conteúdo no Instagram** (API do Instagram).
-3. No painel do app, abra **API do Instagram → Configuração da API com login do Instagram**.
-4. Em **Gerar tokens de acesso**, clique em **Adicionar conta** e entre com a conta do Instagram que
-   vai receber os posts.
+3. No painel do app, abra **API do Instagram → API setup with Unified login**.
+4. Na **Etapa 1**, clique em **Criar nova configuração** e escolha a conta do Instagram como ativo.
+   A URL de redirecionamento não é necessária.
+5. Na **Etapa 2 (Gerar tokens de acesso)**, clique em **Adicionar conta** e entre com a conta do
+   Instagram que vai receber os posts.
    - Se pedir, adicione a conta em **Funções do app → Testadores do Instagram** e aceite o convite
-     no Instagram (**Configurações → Apps e sites → Convites de testador**).
-5. Clique em **Gerar token** ao lado da conta e copie. Ele vale **60 dias**.
+     logado nessa conta em [instagram.com/accounts/manage_access](https://www.instagram.com/accounts/manage_access/)
+     (aba **Convites de testador**).
+6. Clique em **Gerar token** ao lado da conta e copie.
+
+O script reconhece sozinho o tipo de token: o do login unificado (começa com `EAA`) **não expira**;
+o do login do Instagram (começa com `IG`) vale 60 dias e precisa ser renovado.
+
+Copie também o **ID da conta** que aparece embaixo do nome dela no painel e salve em
+**Settings → Secrets and variables → Actions → Variables** com o nome `IG_USER_ID`.
 
 O app pode ficar em **modo de desenvolvimento**: como só publica na sua própria conta, não precisa
 passar pela revisão da Meta.
@@ -138,7 +147,9 @@ Pronto. A cada 15 minutos o GitHub roda o script. O resultado de cada post fica 
 - **Inatividade:** o GitHub desliga workflows agendados após 60 dias sem nenhum commit. Os registros
   de publicação contam como commit, mas se ficar 2 meses sem posts, reative em **Actions**.
 
-## Renovar o token (a cada 60 dias)
+## Renovar o token (só para token que começa com `IG`, a cada 60 dias)
+
+Token do login unificado (`EAA...`) não expira e não precisa disso.
 
 **Automático (recomendado):** crie um token do GitHub em
 [github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens)
@@ -158,5 +169,6 @@ Variáveis de ambiente (no `.env` local ou no `env:` do workflow):
 | `FUSO`             | `America/Sao_Paulo` | fuso dos horários do CSV                      |
 | `MAX_ATRASO_HORAS` | `12`                | até quantas horas de atraso ainda publica     |
 | `MAX_TENTATIVAS`   | `3`                 | tentativas antes de desistir de um post       |
-| `IG_API_VERSION`   | `v27.0`             | versão da API do Instagram                    |
+| `IG_USER_ID`       | (descobre sozinho)  | ID da conta do Instagram que recebe os posts  |
+| `IG_API_VERSION`   | versão padrão do app | fixa uma versão da API (ex.: `v27.0`)        |
 | `MEDIA_BASE_URL`   | (definido no workflow) | endereço público da pasta `midia/`         |

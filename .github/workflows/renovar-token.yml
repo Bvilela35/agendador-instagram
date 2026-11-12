@@ -24,7 +24,7 @@ jobs:
             exit 0
           fi
           NOVO=$(python3 scheduler.py renovar-token)
+          [ -n "$NOVO" ] || { echo "Nada a renovar."; exit 0; }
           echo "::add-mask::$NOVO"
-          [ -n "$NOVO" ] || { echo "::error::Token vazio, nada foi alterado."; exit 1; }
           printf '%s' "$NOVO" | gh secret set IG_ACCESS_TOKEN --repo "$GITHUB_REPOSITORY"
           echo "Secret IG_ACCESS_TOKEN atualizado."

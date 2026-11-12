@@ -50,8 +50,16 @@ _load_dotenv()
 POSTS_CSV = Path(os.environ.get("POSTS_CSV", ROOT / "posts.csv"))
 STATE_FILE = Path(os.environ.get("ESTADO_JSON", ROOT / "publicados.json"))
 MEDIA_DIR = Path(os.environ.get("MIDIA_DIR", ROOT / "midia"))
-API_BASE = os.environ.get("IG_API_BASE", "https://graph.instagram.com").rstrip("/")
-API_VERSION = os.environ.get("IG_API_VERSION", "v27.0")
+# Token do login do Instagram (começa com "IG") usa graph.instagram.com.
+# Token do login unificado/Facebook (começa com "EAA") usa graph.facebook.com.
+_TOKEN = os.environ.get("IG_ACCESS_TOKEN", "").strip()
+API_BASE = (
+    os.environ.get("IG_API_BASE")
+    or ("https://graph.instagram.com" if _TOKEN.startswith("IG") else "https://graph.facebook.com")
+).rstrip("/")
+FACEBOOK_GRAPH = "graph.facebook.com" in API_BASE
+# Vazio = usa a versão padrão do app na Meta.
+API_VERSION = os.environ.get("IG_API_VERSION", "").strip()
 TZ = ZoneInfo(os.environ.get("FUSO", "America/Sao_Paulo"))
 MAX_DELAY = timedelta(hours=float(os.environ.get("MAX_ATRASO_HORAS", "12")))
 MAX_ATTEMPTS = int(os.environ.get("MAX_TENTATIVAS", "3"))
@@ -80,7 +88,7 @@ def api(method: str, path: str, params: Optional[dict] = None, versioned: bool =
         raise SystemExit("Falta a variável IG_ACCESS_TOKEN (secret no GitHub ou arquivo .env).")
     params = {k: v for k, v in (params or {}).items() if v not in (None, "")}
     params["access_token"] = token
-    prefix = f"{API_BASE}/{API_VERSION}" if versioned else API_BASE
+    prefix = f"{API_BASE}/{API_VERSION}" if versioned and API_VERSION else API_BASE
     url = f"{prefix}/{path.lstrip('/')}"
     query = urllib.parse.urlencode(params)
     data = None
@@ -109,8 +117,26 @@ _ig_user_id: Optional[str] = None
 
 
 def ig_user_id() -> str:
+    """ID da conta do Instagram que recebe os posts."""
     global _ig_user_id
-    if _ig_user_id is None:
+    if _ig_user_id:
+        return _ig_user_id
+    if os.environ.get("IG_USER_ID", "").strip():
+        _ig_user_id = os.environ["IG_USER_ID"].strip()
+    elif FACEBOOK_GRAPH:
+        # Token do login unificado: descobre a conta pelas permissões do próprio token.
+        info = api("GET", "debug_token", {"input_token": os.environ.get("IG_ACCESS_TOKEN", "").strip()})
+        ids = []
+        for scope in (info.get("data") or {}).get("granular_scopes") or []:
+            if scope.get("scope") == "instagram_content_publish":
+                ids = scope.get("target_ids") or []
+        if len(ids) != 1:
+            raise ApiError(
+                "não consegui descobrir qual conta do Instagram o token publica "
+                f"({len(ids)} encontradas). Defina IG_USER_ID com o ID da conta."
+            )
+        _ig_user_id = str(ids[0])
+    else:
         me = api("GET", "me", {"fields": "user_id,username"})
         _ig_user_id = str(me.get("user_id") or me["id"])
     return _ig_user_id
@@ -478,9 +504,14 @@ def cmd_publicar(args) -> int:
 
 
 def cmd_conta(_args) -> int:
-    me = api("GET", "me", {"fields": "user_id,username,account_type"})
-    print(f"Conta: @{me.get('username')} ({me.get('account_type', 'tipo desconhecido')})")
-    print(f"ID: {me.get('user_id') or me.get('id')}")
+    if FACEBOOK_GRAPH:
+        info = api("GET", ig_user_id(), {"fields": "username,name,followers_count"})
+        print(f"Conta: @{info.get('username')} ({info.get('name', '')}, {info.get('followers_count', '?')} seguidores)")
+        print(f"ID: {ig_user_id()}")
+    else:
+        me = api("GET", "me", {"fields": "user_id,username,account_type"})
+        print(f"Conta: @{me.get('username')} ({me.get('account_type', 'tipo desconhecido')})")
+        print(f"ID: {me.get('user_id') or me.get('id')}")
     try:
         limit = api("GET", f"{ig_user_id()}/content_publishing_limit", {"fields": "quota_usage,config"})
         item = (limit.get("data") or [{}])[0]
@@ -492,6 +523,9 @@ def cmd_conta(_args) -> int:
 
 
 def cmd_renovar_token(_args) -> int:
+    if FACEBOOK_GRAPH:
+        print("Token do login unificado (usuário do sistema) não expira. Nada a renovar.", file=sys.stderr)
+        return 0
     res = api("GET", "refresh_access_token", {"grant_type": "ig_refresh_token"}, versioned=False)
     days = int(res.get("expires_in", 0)) // 86400
     print(f"Token renovado, vale por mais {days} dias.", file=sys.stderr)
