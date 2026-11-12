@@ -98,6 +98,12 @@
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; cursor: pointer;
   }
   .legenda.aberta { display: block; }
+  .metricas { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 13px; color: var(--suave); }
+  .metricas b { color: var(--texto); font-weight: 650; font-variant-numeric: tabular-nums; margin-right: 3px; }
+  .totais { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; margin-top: 14px; }
+  .totais .bloco { padding: 11px 14px; }
+  .totais .numero { font-size: 22px; }
+  .nota-metricas { font-size: 13px; color: var(--suave); margin-top: 10px; }
   .falha { margin-top: 6px; font-size: 13px; color: var(--vermelho); overflow-wrap: anywhere; }
   .vazio, .aviso { background: var(--cartao); border: 1px dashed var(--borda); border-radius: 16px; padding: 22px; color: var(--suave); text-align: center; margin-top: 18px; }
   .aviso { border-style: solid; border-color: var(--vermelho); color: var(--vermelho); text-align: left; }
@@ -188,6 +194,7 @@ function desenhar() {
 
   const avisos = document.getElementById("avisos"); avisos.textContent = "";
   for (const e of dados.erros_planilha || []) avisos.append(el("div", "aviso", "Planilha: " + e));
+  if (filtro === "publicados" && publicados.length) avisos.append(totais(publicados));
 
   let visiveis = filtro === "publicados" ? publicados.slice().reverse()
     : filtro === "agendados" ? pendentes.concat(problemas).sort((x, y) => x.quando.localeCompare(y.quando)) : posts;
@@ -216,6 +223,7 @@ function desenhar() {
     const leg = el("p", "legenda", p.legenda || "(sem legenda)"); leg.title = "Clique para ver a legenda inteira";
     leg.onclick = () => leg.classList.toggle("aberta");
     corpo.append(leg, el("div", "arquivo", p.arquivos.join(" · ")));
+    if (p.status === "publicado" && p.metricas) corpo.append(linhaMetricas(p.metricas));
     if (p.erro) corpo.append(el("div", "falha", `Falhou${p.tentativas ? ` (tentativa ${p.tentativas})` : ""}: ${p.erro}`));
     else if (p.status === "ignorado" || p.status === "passou") corpo.append(el("div", "falha", "Passou do horário sem ser publicado. Mude a data na planilha para publicar."));
     cartao.append(mini, corpo); secao.append(cartao);
@@ -223,6 +231,33 @@ function desenhar() {
   const ult = dados.ultima_checagem ? partes(dados.ultima_checagem).hora : "—";
   document.getElementById("rodape").textContent = `Horários em ${dados.fuso.replace("_", " ")} · última checagem às ${ult} · atualiza sozinho a cada minuto`;
   relogio();
+}
+
+const CAMPOS = [["views", "visualizações"], ["reach", "alcance"], ["likes", "curtidas"], ["comments", "comentários"], ["shares", "compartilhamentos"], ["saved", "salvamentos"]];
+const num = n => Number(n).toLocaleString("pt-BR");
+const tempo = ms => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}min ${s % 60}s`; };
+
+function linhaMetricas(m) {
+  const box = el("div", "metricas");
+  for (const [k, nome] of CAMPOS) if (m[k] != null) { const s = el("span"); s.append(el("b", null, num(m[k])), nome); box.append(s); }
+  if (m.ig_reels_avg_watch_time != null) { const s = el("span"); s.append(el("b", null, tempo(m.ig_reels_avg_watch_time)), "assistidos em média"); box.append(s); }
+  return box;
+}
+
+function totais(publicados) {
+  const wrap = el("div"), grade = el("div", "totais"), soma = {};
+  for (const p of publicados) for (const [k] of CAMPOS) if (p.metricas && p.metricas[k] != null) soma[k] = (soma[k] || 0) + p.metricas[k];
+  for (const [k, nome] of CAMPOS) if (soma[k] != null) {
+    const b = el("div", "bloco"); b.append(el("div", "rotulo", nome), el("div", "numero", num(soma[k]))); grade.append(b);
+  }
+  if (grade.children.length) wrap.append(grade);
+  let nota = "";
+  if (!dados.metricas_ativas) nota = "Métricas desligadas: o servidor está sem o token do Instagram.";
+  else if (dados.insights_bloqueado) nota = "Visualizações, alcance, compartilhamentos, salvamentos e tempo assistido aparecem quando o token tiver a permissão de insights. Curtidas e comentários já estão ativos.";
+  else if (!grade.children.length) nota = "As métricas aparecem alguns minutos depois de cada publicação.";
+  if (nota) wrap.append(el("div", "nota-metricas", nota + " Atualizam a cada 30 minutos."));
+  else wrap.append(el("div", "nota-metricas", "Somando os posts publicados. Atualizam a cada 30 minutos."));
+  return wrap;
 }
 
 function relogio() {

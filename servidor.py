@@ -43,7 +43,15 @@ PUBLICA = os.environ.get("PUBLICAR", "").strip() == "1" and bool(
 )
 PERFIL = os.environ.get("PERFIL", "favo.colmeia").strip().lstrip("@")
 
+TEM_TOKEN = bool(os.environ.get("IG_ACCESS_TOKEN", "").strip())
+METRICAS_FILE = Path(os.environ.get("METRICAS_JSON", scheduler.STATE_FILE.parent / "metricas.json"))
+INTERVALO_METRICAS = float(os.environ.get("INTERVALO_METRICAS_MIN", "30")) * 60
+# Métricas de Reels da API do Instagram (precisam da permissão de insights no token).
+INSIGHTS = "views,reach,shares,saved,total_interactions,ig_reels_avg_watch_time"
+
 _trava = threading.Lock()
+_metricas: dict = {}
+_insights_bloqueado = None  # texto do erro quando o token não tem permissão de insights
 _estado_remoto: dict = {}
 _rodadas: list = []  # últimas rodadas de publicação (texto), mais nova primeiro
 _ultima_checagem = None
@@ -109,6 +117,62 @@ def _laco() -> None:
         time.sleep(INTERVALO)
 
 
+def _carregar_metricas() -> None:
+    global _metricas
+    with contextlib.suppress(ValueError, OSError):
+        _metricas = json.loads(METRICAS_FILE.read_text(encoding="utf-8") or "{}")
+
+
+def _coletar_metricas() -> None:
+    """Lê curtidas, comentários e (se o token permitir) insights de cada post publicado."""
+    global _insights_bloqueado
+    novas = {}
+    bloqueio = None
+    for entrada in _estado_atual().values():
+        mid = entrada.get("media_id")
+        if entrada.get("status") != "publicado" or not mid:
+            continue
+        m = {}
+        try:
+            campos = scheduler.api("GET", mid, {"fields": "like_count,comments_count"})
+            m["likes"] = campos.get("like_count")
+            m["comments"] = campos.get("comments_count")
+        except Exception as e:
+            print(f"Métricas de {mid}: {e}", flush=True)
+            continue
+        if bloqueio is None:
+            try:
+                dados = scheduler.api("GET", f"{mid}/insights", {"metric": INSIGHTS}).get("data") or []
+                for item in dados:
+                    valores = item.get("values") or [{}]
+                    m[item["name"]] = valores[0].get("value")
+            except scheduler.ApiError as e:
+                if "(#10)" in str(e) or "permission" in str(e).lower():
+                    bloqueio = "O token não tem a permissão de insights do Instagram."
+                else:
+                    print(f"Insights de {mid}: {e}", flush=True)
+        m["atualizado"] = scheduler.now_iso()
+        novas[mid] = m
+    with _trava:
+        _metricas.update(novas)
+        _insights_bloqueado = bloqueio
+        copia = dict(_metricas)
+    with contextlib.suppress(OSError):
+        METRICAS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        METRICAS_FILE.write_text(json.dumps(copia, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _laco_metricas() -> None:
+    _carregar_metricas()
+    time.sleep(20)  # deixa a primeira rodada de publicação acontecer antes
+    while True:
+        try:
+            _coletar_metricas()
+        except Exception as e:  # nunca derruba o laço
+            print(f"Erro ao coletar métricas: {type(e).__name__}: {e}", flush=True)
+        time.sleep(INTERVALO_METRICAS)
+
+
 def _estado_atual() -> dict:
     if PUBLICA:
         with contextlib.suppress(Exception):
@@ -151,9 +215,11 @@ def dados_do_painel() -> dict:
             "erro": entrada.get("ultimo_erro"),
             "tentativas": entrada.get("tentativas"),
             "atualizado": entrada.get("atualizado"),
+            "metricas": _metricas.get(entrada.get("media_id") or "", None),
         })
     with _trava:
         rodadas = list(_rodadas[:5])
+        bloqueio = _insights_bloqueado
     return {
         "agora": agora.isoformat(timespec="seconds"),
         "fuso": scheduler.TZ.key,
@@ -162,6 +228,8 @@ def dados_do_painel() -> dict:
         "ultima_checagem": _ultima_checagem,
         "erros_planilha": erros,
         "rodadas": rodadas,
+        "metricas_ativas": TEM_TOKEN,
+        "insights_bloqueado": bloqueio,
         "posts": itens,
     }
 
@@ -256,6 +324,8 @@ class Tratador(BaseHTTPRequestHandler):
 
 def main() -> None:
     threading.Thread(target=_laco, daemon=True).start()
+    if TEM_TOKEN:
+        threading.Thread(target=_laco_metricas, daemon=True).start()
     modo = "publicando a cada %gs" % INTERVALO if PUBLICA else "somente painel"
     print(f"Agendador no ar na porta {PORTA} ({modo}).", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORTA), Tratador).serve_forever()
