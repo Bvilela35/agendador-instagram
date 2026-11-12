@@ -1,0 +1,43 @@
+name: Publicar posts agendados
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # a cada 15 min (o GitHub pode atrasar alguns minutos)
+  workflow_dispatch:
+    inputs:
+      simular:
+        description: "Só simular (não publica nada)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publicar-instagram
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publicar
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          MEDIA_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/midia/
+        run: python3 scheduler.py publicar ${{ inputs.simular && '--simular' || '' }}
+
+      - name: Salvar registro de publicações
+        if: always()
+        run: |
+          [ -f publicados.json ] || exit 0
+          git add publicados.json
+          git diff --cached --quiet && exit 0
+          git config user.name "agendador-instagram"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Registro de publicações"
+          git pull --rebase
+          git push

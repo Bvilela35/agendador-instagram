@@ -1,0 +1,6 @@
+data,hora,tipo,arquivos,legenda
+2026-12-01,18:30,foto,dia01.jpg,"Primeira legenda do mês ✨
+
+Pode ter várias linhas, emojis e #hashtags."
+2026-12-02,12:00,carrossel,dia02-1.jpg|dia02-2.jpg|dia02-3.jpg,Carrossel: separe os arquivos com |
+2026-12-03,19:00,reels,dia03.mp4,Reels em .mp4 (vertical 9:16)
