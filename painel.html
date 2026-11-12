@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Agendamentos · Favo Colmeia</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,6 90,28 90,72 50,94 10,72 10,28' fill='%23e3a008'/></svg>">
+<style>
+  :root {
+    --fundo: #fbf6ea; --cartao: #fffdf8; --borda: #eadfc6; --texto: #2b2416; --suave: #7a6c52;
+    --mel: #d99a06; --mel-fundo: #fbeec7; --lilas: #7c5cc4; --lilas-fundo: #ece5fa;
+    --verde: #2f7d4f; --verde-fundo: #dcf1e3; --vermelho: #b3382c; --vermelho-fundo: #fbe2de;
+    --cinza-fundo: #eee8da; --sombra: 0 1px 2px rgba(60, 45, 10, .06), 0 6px 20px rgba(60, 45, 10, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fundo: #17140e; --cartao: #211c13; --borda: #3a3222; --texto: #f3ead6; --suave: #a99a7c;
+      --mel: #f2b632; --mel-fundo: #3d3011; --lilas: #b39cf0; --lilas-fundo: #2e2648;
+      --verde: #6fcf97; --verde-fundo: #183524; --vermelho: #f08b80; --vermelho-fundo: #45201c;
+      --cinza-fundo: #2c261a; --sombra: 0 1px 2px rgba(0, 0, 0, .3);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--fundo); color: var(--texto);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .pagina { max-width: 880px; margin: 0 auto; padding: 28px 16px 64px; }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+  .favo { width: 44px; height: 44px; flex: none; }
+  h1 { font: 600 26px/1.15 Georgia, "Times New Roman", serif; margin: 0; letter-spacing: -.01em; }
+  .sub { color: var(--suave); font-size: 14px; margin-top: 2px; }
+  .sub a { color: inherit; }
+  .modo {
+    margin-left: auto; font-size: 12.5px; font-weight: 600; padding: 6px 11px; border-radius: 999px;
+    background: var(--cinza-fundo); color: var(--suave); display: inline-flex; align-items: center; gap: 7px;
+  }
+  .modo i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .modo.ativo { background: var(--verde-fundo); color: var(--verde); }
+
+  .resumo { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+  .bloco { background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; padding: 14px 16px; box-shadow: var(--sombra); min-width: 0; }
+  .rotulo { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--suave); }
+  .numero { font: 600 30px/1.1 Georgia, serif; margin-top: 6px; font-variant-numeric: lining-nums tabular-nums; }
+  .proximo { background: var(--mel-fundo); border-color: transparent; }
+  .proximo .numero { font-size: 24px; }
+  .proximo .quando { font-size: 13.5px; color: var(--suave); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 640px) {
+    .resumo { grid-template-columns: repeat(3, 1fr); }
+    .proximo { grid-column: 1 / -1; }
+    .numero { font-size: 24px; }
+    .modo { margin-left: 0; }
+  }
+
+  .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .filtros button {
+    font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; padding: 7px 13px; border-radius: 999px;
+    border: 1px solid var(--borda); background: transparent; color: var(--suave);
+  }
+  .filtros button[aria-pressed="true"] { background: var(--texto); border-color: var(--texto); color: var(--fundo); }
+  .filtros button:focus-visible, .mini:focus-visible, a:focus-visible { outline: 2px solid var(--lilas); outline-offset: 2px; }
+
+  .dia { margin-top: 26px; }
+  .dia h2 { font: 600 17px/1.2 Georgia, serif; margin: 0 0 10px; display: flex; align-items: baseline; gap: 10px; }
+  .dia h2 span { font: 500 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--suave); }
+  .dia h2 .hoje { color: var(--mel); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 11.5px; }
+  .post {
+    display: grid; grid-template-columns: 64px 1fr; gap: 14px; background: var(--cartao); border: 1px solid var(--borda);
+    border-radius: 16px; padding: 12px; margin-bottom: 10px; box-shadow: var(--sombra);
+  }
+  .post.publicado { opacity: .78; }
+  .mini {
+    width: 64px; aspect-ratio: 9 / 16; border-radius: 10px; overflow: hidden; background: var(--cinza-fundo);
+    border: 0; padding: 0; cursor: pointer; position: relative; display: block;
+  }
+  .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mini::after {
+    content: ""; position: absolute; inset: 0; margin: auto; width: 0; height: 0;
+    border-left: 13px solid #fff; border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .6)); transform: translateX(2px);
+  }
+  .corpo { min-width: 0; }
+  .linha1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .hora { font: 600 20px/1 Georgia, serif; font-variant-numeric: lining-nums tabular-nums; }
+  .selo { font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: var(--cinza-fundo); color: var(--suave); white-space: nowrap; }
+  .selo.agendado { background: var(--lilas-fundo); color: var(--lilas); }
+  .selo.publicado { background: var(--verde-fundo); color: var(--verde); }
+  .selo.erro, .selo.ignorado, .selo.passou { background: var(--vermelho-fundo); color: var(--vermelho); }
+  .selo.fila, .selo.publicando { background: var(--mel-fundo); color: var(--mel); }
+  .falta { font-size: 13px; color: var(--suave); }
+  .ver { margin-left: auto; font-size: 13.5px; font-weight: 600; color: var(--lilas); text-decoration: none; white-space: nowrap; }
+  .ver:hover { text-decoration: underline; }
+  .arquivo { font: 12.5px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--suave); margin-top: 6px; overflow-wrap: anywhere; }
+  .legenda {
+    margin: 6px 0 0; white-space: pre-line; overflow-wrap: anywhere; font-size: 14.5px;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; cursor: pointer;
+  }
+  .legenda.aberta { display: block; }
+  .falha { margin-top: 6px; font-size: 13px; color: var(--vermelho); overflow-wrap: anywhere; }
+  .vazio, .aviso { background: var(--cartao); border: 1px dashed var(--borda); border-radius: 16px; padding: 22px; color: var(--suave); text-align: center; margin-top: 18px; }
+  .aviso { border-style: solid; border-color: var(--vermelho); color: var(--vermelho); text-align: left; }
+  footer { margin-top: 34px; font-size: 12.5px; color: var(--suave); text-align: center; }
+
+  dialog { border: 0; padding: 0; background: transparent; max-width: 94vw; max-height: 94vh; }
+  dialog::backdrop { background: rgba(15, 11, 3, .78); }
+  dialog video { display: block; max-height: 88vh; max-width: 94vw; border-radius: 14px; background: #000; }
+  dialog button { position: fixed; top: 14px; right: 14px; font: 600 14px/1 inherit; padding: 10px 14px; border-radius: 999px; border: 0; cursor: pointer; background: #fff; color: #222; }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <header>
+    <svg class="favo" viewBox="0 0 100 100" aria-hidden="true">
+      <polygon points="50,6 90,28 90,72 50,94 10,72 10,28" fill="var(--mel)"/>
+      <polygon points="50,30 68,40 68,60 50,70 32,60 32,40" fill="var(--fundo)"/>
+    </svg>
+    <div>
+      <h1>Agendamentos</h1>
+      <div class="sub" id="sub">Carregando…</div>
+    </div>
+    <div class="modo" id="modo"><i></i><span>…</span></div>
+  </header>
+
+  <section class="resumo" aria-label="Resumo">
+    <div class="bloco proximo"><div class="rotulo">Próximo post</div><div class="numero" id="contagem">—</div><div class="quando" id="proximo-quando">&nbsp;</div></div>
+    <div class="bloco"><div class="rotulo">Agendados</div><div class="numero" id="n-agendados">—</div></div>
+    <div class="bloco"><div class="rotulo">Publicados</div><div class="numero" id="n-publicados">—</div></div>
+    <div class="bloco"><div class="rotulo">Com problema</div><div class="numero" id="n-problemas">—</div></div>
+  </section>
+
+  <div class="filtros" role="group" aria-label="Filtrar posts">
+    <button data-filtro="agendados" aria-pressed="true">Agendados</button>
+    <button data-filtro="publicados" aria-pressed="false">Publicados</button>
+    <button data-filtro="todos" aria-pressed="false">Todos</button>
+  </div>
+
+  <div id="avisos"></div>
+  <main id="lista"></main>
+  <footer id="rodape"></footer>
+</div>
+
+<dialog id="player"><button type="button" id="fechar">Fechar</button><video controls playsinline></video></dialog>
+
+<script>
+const DIAS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const SELOS = { agendado: "Agendado", publicado: "Publicado", "na fila": "Na fila", publicando: "Publicando", erro: "Erro", ignorado: "Não saiu", passou: "Não saiu" };
+const PROBLEMA = new Set(["erro", "ignorado", "passou"]);
+let dados = null, filtro = "agendados", desvio = 0;
+
+const el = (tag, cls, texto) => { const e = document.createElement(tag); if (cls) e.className = cls; if (texto != null) e.textContent = texto; return e; };
+// Datas chegam como "2026-11-13T08:00-03:00": as partes são lidas direto do texto, no fuso do agendador.
+const partes = iso => ({ dia: iso.slice(0, 10), hora: iso.slice(11, 16) });
+const agora = () => Date.now() + desvio;
+
+function rotuloDia(dia) {
+  const [a, m, d] = dia.split("-").map(Number);
+  return { nome: DIAS[new Date(Date.UTC(a, m - 1, d)).getUTCDay()], data: `${d} de ${MESES[m - 1]}` };
+}
+function falta(ms) {
+  if (ms <= 0) return "agora";
+  const min = Math.floor(ms / 60000), h = Math.floor(min / 60), d = Math.floor(h / 24);
+  if (d >= 1) return `em ${d}d ${h % 24}h`;
+  if (h >= 1) return `em ${h}h ${String(min % 60).padStart(2, "0")}min`;
+  if (min >= 1) return `em ${min} min`;
+  return `em ${Math.max(1, Math.floor(ms / 1000))}s`;
+}
+
+function desenhar() {
+  if (!dados) return;
+  const posts = dados.posts, hoje = dados.agora.slice(0, 10);
+  const pendentes = posts.filter(p => p.status === "agendado" || p.status === "na fila" || p.status === "publicando");
+  const publicados = posts.filter(p => p.status === "publicado");
+  const problemas = posts.filter(p => PROBLEMA.has(p.status));
+
+  document.getElementById("n-agendados").textContent = pendentes.length;
+  document.getElementById("n-publicados").textContent = publicados.length;
+  document.getElementById("n-problemas").textContent = problemas.length;
+  const sub = document.getElementById("sub");
+  sub.textContent = "";
+  const a = el("a", null, "@" + dados.perfil); a.href = "https://www.instagram.com/" + dados.perfil + "/"; a.target = "_blank"; a.rel = "noopener";
+  sub.append(a, ` · ${posts.length} posts no calendário`);
+  const modo = document.getElementById("modo");
+  modo.classList.toggle("ativo", dados.modo === "publicando");
+  modo.lastElementChild.textContent = dados.modo === "publicando" ? "Publicação automática ligada" : "Somente visualização";
+
+  const avisos = document.getElementById("avisos"); avisos.textContent = "";
+  for (const e of dados.erros_planilha || []) avisos.append(el("div", "aviso", "Planilha: " + e));
+
+  let visiveis = filtro === "publicados" ? publicados.slice().reverse()
+    : filtro === "agendados" ? pendentes.concat(problemas).sort((x, y) => x.quando.localeCompare(y.quando)) : posts;
+  const lista = document.getElementById("lista"); lista.textContent = "";
+  if (!visiveis.length) lista.append(el("div", "vazio", filtro === "agendados" ? "Nenhum post agendado." : "Nada por aqui ainda."));
+
+  let secao = null, diaAtual = "";
+  for (const p of visiveis) {
+    const { dia, hora } = partes(p.quando);
+    if (dia !== diaAtual) {
+      diaAtual = dia; secao = el("section", "dia");
+      const r = rotuloDia(dia), h2 = el("h2", null, r.nome.charAt(0).toUpperCase() + r.nome.slice(1));
+      h2.append(el("span", null, r.data));
+      if (dia === hoje) h2.append(el("span", "hoje", "hoje"));
+      secao.append(h2); lista.append(secao);
+    }
+    const cartao = el("article", "post" + (p.status === "publicado" ? " publicado" : ""));
+    const mini = el("button", "mini"); mini.type = "button"; mini.setAttribute("aria-label", "Assistir " + (p.arquivos[0] || "vídeo"));
+    if (p.miniatura) { const img = el("img"); img.src = p.miniatura; img.alt = ""; img.loading = "lazy"; mini.append(img); }
+    mini.onclick = () => abrir(p.midia);
+    const corpo = el("div", "corpo"), l1 = el("div", "linha1");
+    l1.append(el("span", "hora", hora), el("span", "selo " + (p.status === "na fila" ? "fila" : p.status), SELOS[p.status] || p.status));
+    if (p.status === "agendado") { const f = el("span", "falta"); f.dataset.quando = p.quando; f.textContent = falta(new Date(p.quando) - agora()); l1.append(f); }
+    if (p.link) { const v = el("a", "ver", "Ver no Instagram ↗"); v.href = p.link; v.target = "_blank"; v.rel = "noopener"; l1.append(v); }
+    corpo.append(l1);
+    const leg = el("p", "legenda", p.legenda || "(sem legenda)"); leg.title = "Clique para ver a legenda inteira";
+    leg.onclick = () => leg.classList.toggle("aberta");
+    corpo.append(leg, el("div", "arquivo", p.arquivos.join(" · ")));
+    if (p.erro) corpo.append(el("div", "falha", `Falhou${p.tentativas ? ` (tentativa ${p.tentativas})` : ""}: ${p.erro}`));
+    else if (p.status === "ignorado" || p.status === "passou") corpo.append(el("div", "falha", "Passou do horário sem ser publicado. Mude a data na planilha para publicar."));
+    cartao.append(mini, corpo); secao.append(cartao);
+  }
+  const ult = dados.ultima_checagem ? partes(dados.ultima_checagem).hora : "—";
+  document.getElementById("rodape").textContent = `Horários em ${dados.fuso.replace("_", " ")} · última checagem às ${ult} · atualiza sozinho a cada minuto`;
+  relogio();
+}
+
+function relogio() {
+  if (!dados) return;
+  const prox = dados.posts.filter(p => p.status === "agendado" || p.status === "na fila").sort((x, y) => x.quando.localeCompare(y.quando))[0];
+  const c = document.getElementById("contagem"), q = document.getElementById("proximo-quando");
+  if (!prox) { c.textContent = "Nenhum"; q.textContent = "Calendário concluído"; }
+  else {
+    const t = falta(new Date(prox.quando) - agora()), { dia, hora } = partes(prox.quando), r = rotuloDia(dia);
+    c.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+    q.textContent = `${r.nome}, ${r.data} às ${hora} · ${prox.arquivos[0] || ""}`;
+  }
+  for (const f of document.querySelectorAll(".falta")) f.textContent = falta(new Date(f.dataset.quando) - agora());
+}
+
+const player = document.getElementById("player"), video = player.querySelector("video");
+function abrir(src) { if (!src) return; video.src = src; player.showModal(); video.play().catch(() => {}); }
+function fechar() { video.pause(); video.removeAttribute("src"); video.load(); if (player.open) player.close(); }
+document.getElementById("fechar").onclick = fechar;
+player.addEventListener("click", e => { if (e.target === player) fechar(); });
+player.addEventListener("close", () => video.pause());
+
+for (const b of document.querySelectorAll(".filtros button")) b.onclick = () => {
+  filtro = b.dataset.filtro;
+  for (const o of document.querySelectorAll(".filtros button")) o.setAttribute("aria-pressed", o === b);
+  desenhar();
+};
+
+async function carregar() {
+  try {
+    const r = await fetch("/api/posts", { cache: "no-store" });
+    if (!r.ok) throw new Error((await r.json()).erro || r.status);
+    dados = await r.json(); desvio = new Date(dados.agora) - Date.now();
+    if (!player.open) desenhar();
+  } catch (e) {
+    if (!dados) document.getElementById("lista").replaceChildren(el("div", "aviso", "Não consegui carregar os agendamentos: " + e.message));
+  }
+}
+carregar(); setInterval(carregar, 60000); setInterval(relogio, 1000);
+</script>
+</body>
+</html>
