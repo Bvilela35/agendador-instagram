@@ -240,6 +240,12 @@ def dados_do_painel() -> dict:
             "atualizado": entrada.get("atualizado"),
             "metricas": _metricas.get(entrada.get("media_id") or "", None),
         })
+    # Stories aparecem dentro do card do Reels do mesmo vídeo, não como item próprio.
+    stories = {i["arquivos"][0]: i for i in itens if i["tipo"] == "story" and i["arquivos"]}
+    itens = [i for i in itens if i["tipo"] != "story"]
+    for i in itens:
+        s = stories.pop(i["arquivos"][0], None) if i["arquivos"] else None
+        i["story"] = {k: s[k] for k in ("quando", "status", "link", "erro")} if s else None
     with _trava:
         rodadas = list(_rodadas[:5])
         bloqueio = _insights_bloqueado

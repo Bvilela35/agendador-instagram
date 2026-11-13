@@ -69,6 +69,7 @@ TYPES = {
     "foto": "foto", "imagem": "foto", "image": "foto", "post": "foto",
     "carrossel": "carrossel", "carousel": "carrossel",
     "reels": "reels", "reel": "reels", "video": "reels", "vídeo": "reels",
+    "story": "story", "stories": "story", "storie": "story",
 }
 IMAGE_EXT = {".jpg", ".jpeg"}
 VIDEO_EXT = {".mp4", ".mov"}
@@ -233,7 +234,7 @@ def validate(post: Post) -> Tuple[List[str], List[str]]:
     """Retorna (erros, avisos)."""
     errors, warnings = [], []
     if post.kind is None:
-        errors.append(f"tipo '{post.kind_raw}' desconhecido (use foto, carrossel ou reels)")
+        errors.append(f"tipo '{post.kind_raw}' desconhecido (use foto, carrossel, reels ou story)")
         return errors, warnings
     n = len(post.files)
     if n == 0:
@@ -242,6 +243,8 @@ def validate(post: Post) -> Tuple[List[str], List[str]]:
         errors.append("foto precisa de exatamente 1 arquivo .jpg")
     elif post.kind == "reels" and (n != 1 or not is_video(post.files[0])):
         errors.append("reels precisa de exatamente 1 arquivo .mp4 ou .mov")
+    elif post.kind == "story" and n != 1:
+        errors.append("story precisa de exatamente 1 arquivo (.jpg, .mp4 ou .mov)")
     elif post.kind == "carrossel" and not 2 <= n <= 20:
         errors.append(f"carrossel precisa de 2 a 20 arquivos (tem {n})")
 
@@ -339,6 +342,15 @@ def build_container(post: Post) -> str:
     if post.kind == "foto":
         cid = create_container({"image_url": urls[0], "caption": post.caption})
         wait_ready(cid, 180)
+        return cid
+    if post.kind == "story":
+        # A API não aceita legenda, figurinhas nem link para o Reels em stories.
+        if is_video(urls[0]):
+            cid = create_container({"media_type": "STORIES", "video_url": urls[0]})
+            wait_ready(cid, 900)
+        else:
+            cid = create_container({"media_type": "STORIES", "image_url": urls[0]})
+            wait_ready(cid, 180)
         return cid
     if post.kind == "reels":
         cid = create_container({"media_type": "REELS", "video_url": urls[0], "caption": post.caption})

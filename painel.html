@@ -115,6 +115,9 @@
   .copiar.ok { background: var(--verde); color: #fff; }
   .campo p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; font-size: 14px; }
   .abas button:focus-visible, .copiar:focus-visible { outline: 2px solid var(--lilas); outline-offset: 2px; }
+  .story { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: var(--suave); }
+  .story a { color: var(--lilas); font-weight: 600; text-decoration: none; }
+  .story .falha { margin-top: 0; }
   .drive { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
   .drive a {
     font-size: 12.5px; font-weight: 650; text-decoration: none; padding: 5px 12px; border-radius: 999px;
@@ -253,6 +256,7 @@ function desenhar() {
     leg.onclick = () => leg.classList.toggle("aberta");
     corpo.append(leg, el("div", "arquivo", p.arquivos.join(" · ")));
     corpo.append(linksDrive(p), plataformas(p));
+    if (p.story) corpo.append(linhaStory(p.story));
     if (p.status === "publicado" && p.metricas) corpo.append(linhaMetricas(p.metricas));
     if (p.erro) corpo.append(el("div", "falha", `Falhou${p.tentativas ? ` (tentativa ${p.tentativas})` : ""}: ${p.erro}`));
     else if (p.status === "ignorado" || p.status === "passou") corpo.append(el("div", "falha", "Passou do horário sem ser publicado. Mude a data na planilha para publicar."));
@@ -261,6 +265,15 @@ function desenhar() {
   const ult = dados.ultima_checagem ? partes(dados.ultima_checagem).hora : "—";
   document.getElementById("rodape").textContent = `Horários em ${dados.fuso.replace("_", " ")} · última checagem às ${ult} · atualiza sozinho a cada minuto`;
   relogio();
+}
+
+function linhaStory(s) {
+  const box = el("div", "story"), { dia, hora } = partes(s.quando), [, m, d] = dia.split("-");
+  const quando = dia === dados.agora.slice(0, 10) ? `hoje às ${hora}` : `${Number(d)}/${m} às ${hora}`;
+  box.append(el("span", "selo " + (s.status === "na fila" ? "fila" : s.status), "Story · " + (SELOS[s.status] || s.status)), el("span", null, quando));
+  if (s.link) { const a = el("a", null, "ver ↗"); a.href = s.link; a.target = "_blank"; a.rel = "noopener"; box.append(a); }
+  if (s.erro) box.append(el("span", "falha", s.erro));
+  return box;
 }
 
 function linksDrive(p) {
