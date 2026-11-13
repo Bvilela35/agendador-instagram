@@ -189,9 +189,18 @@ def _legendas_plataformas() -> dict:
     return {}
 
 
+def _links_drive() -> dict:
+    """Links do Google Drive por arquivo de vídeo (drive.json)."""
+    with contextlib.suppress(ValueError, OSError):
+        return json.loads((ROOT / "drive.json").read_text(encoding="utf-8"))
+    return {}
+
+
 def dados_do_painel() -> dict:
     posts, erros = scheduler.load_posts()
     outras = _legendas_plataformas()
+    drive = _links_drive()
+    arquivos_drive = drive.get("arquivos") or {}
     estado = _estado_atual()
     agora = datetime.now(scheduler.TZ)
     itens = []
@@ -219,6 +228,11 @@ def dados_do_painel() -> dict:
             ),
             "legenda": post.caption,
             "outras": outras.get(arquivo),
+            "drive": (
+                {"ver": f"https://drive.google.com/file/d/{arquivos_drive[arquivo]}/view",
+                 "baixar": f"https://drive.google.com/uc?export=download&id={arquivos_drive[arquivo]}"}
+                if arquivo in arquivos_drive else None
+            ),
             "status": status,
             "link": entrada.get("permalink"),
             "erro": entrada.get("ultimo_erro"),
@@ -237,6 +251,7 @@ def dados_do_painel() -> dict:
         "ultima_checagem": _ultima_checagem,
         "erros_planilha": erros,
         "rodadas": rodadas,
+        "pasta_drive": drive.get("pasta"),
         "metricas_ativas": TEM_TOKEN,
         "insights_bloqueado": bloqueio,
         "posts": itens,

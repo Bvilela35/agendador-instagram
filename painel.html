@@ -115,6 +115,14 @@
   .copiar.ok { background: var(--verde); color: #fff; }
   .campo p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; font-size: 14px; }
   .abas button:focus-visible, .copiar:focus-visible { outline: 2px solid var(--lilas); outline-offset: 2px; }
+  .drive { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .drive a {
+    font-size: 12.5px; font-weight: 650; text-decoration: none; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--borda); color: var(--texto);
+  }
+  .drive a.baixar { background: var(--mel-fundo); border-color: transparent; }
+  .drive a:hover { border-color: var(--mel); }
+  .drive span { font-size: 12.5px; color: var(--suave); }
   .metricas { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 13px; color: var(--suave); }
   .metricas b { color: var(--texto); font-weight: 650; font-variant-numeric: tabular-nums; margin-right: 3px; }
   .totais { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; margin-top: 14px; }
@@ -205,6 +213,10 @@ function desenhar() {
   sub.textContent = "";
   const a = el("a", null, "@" + dados.perfil); a.href = "https://www.instagram.com/" + dados.perfil + "/"; a.target = "_blank"; a.rel = "noopener";
   sub.append(a, ` · ${posts.length} posts no calendário`);
+  if (dados.pasta_drive) {
+    const pd = el("a", null, "pasta no Drive"); pd.href = dados.pasta_drive; pd.target = "_blank"; pd.rel = "noopener";
+    sub.append(" · ", pd);
+  }
   const modo = document.getElementById("modo");
   modo.classList.toggle("ativo", dados.modo === "publicando");
   modo.lastElementChild.textContent = dados.modo === "publicando" ? "Publicação automática ligada" : "Somente visualização";
@@ -240,7 +252,7 @@ function desenhar() {
     const leg = el("p", "legenda", p.legenda || "(sem legenda)"); leg.title = "Clique para ver a legenda inteira";
     leg.onclick = () => leg.classList.toggle("aberta");
     corpo.append(leg, el("div", "arquivo", p.arquivos.join(" · ")));
-    corpo.append(plataformas(p));
+    corpo.append(linksDrive(p), plataformas(p));
     if (p.status === "publicado" && p.metricas) corpo.append(linhaMetricas(p.metricas));
     if (p.erro) corpo.append(el("div", "falha", `Falhou${p.tentativas ? ` (tentativa ${p.tentativas})` : ""}: ${p.erro}`));
     else if (p.status === "ignorado" || p.status === "passou") corpo.append(el("div", "falha", "Passou do horário sem ser publicado. Mude a data na planilha para publicar."));
@@ -249,6 +261,15 @@ function desenhar() {
   const ult = dados.ultima_checagem ? partes(dados.ultima_checagem).hora : "—";
   document.getElementById("rodape").textContent = `Horários em ${dados.fuso.replace("_", " ")} · última checagem às ${ult} · atualiza sozinho a cada minuto`;
   relogio();
+}
+
+function linksDrive(p) {
+  const box = el("div", "drive");
+  if (!p.drive) { box.append(el("span", null, "Vídeo ainda não está no Drive")); return box; }
+  const baixar = el("a", "baixar", "Baixar vídeo ↓"); baixar.href = p.drive.baixar; baixar.rel = "noopener";
+  const ver = el("a", null, "Abrir no Drive ↗"); ver.href = p.drive.ver; ver.target = "_blank"; ver.rel = "noopener";
+  box.append(baixar, ver);
+  return box;
 }
 
 const abaAberta = {}; // aba escolhida por vídeo, mantida entre as atualizações automáticas
